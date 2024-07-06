@@ -653,7 +653,7 @@ namespace CaDiCaL
 
                         // Find replacement watch 'r' at position 'k' with value 'v'
 
-                        prop_result res = prop_vanilla(k, end, vals);
+                        prop_result res = prop_simd_ver1(k, end, vals);
 
                         signed char v = res.v;
                         k = res.k;
@@ -665,7 +665,7 @@ namespace CaDiCaL
                             k = lits + 2;
                             assert(w.clause->pos <= size);
 
-                            res = prop_vanilla(k, middle, vals);
+                            res = prop_simd_ver1(k, middle, vals);
 
                             v = res.v;
                             k = res.k;

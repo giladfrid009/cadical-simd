@@ -1,25 +1,25 @@
 #include <immintrin.h>
 #include <cstdint>
 
-using std::int8_t;
-
 struct prop_result
 {
-    const int* k;
+    int* k;
     signed char v;
+
+    prop_result(const int* k, signed char v) : k(const_cast<int*>(k)), v(v) { }
 };
 
-const inline prop_result prop_vanilla(const int* k, const int* end, signed char* vals)
+inline prop_result prop_vanilla(const int* __restrict k, const int* __restrict end, const signed char* __restrict vals)
 {
     signed char v = -1;
 
     while (k != end && (v = vals[*k]) < 0)
         k++;
 
-    return { k, v };
+    return prop_result(k, v);
 }
 
-const inline prop_result prop_simd(const int* k, const int* end, signed char* vals)
+inline prop_result prop_simd_ver1(const int* __restrict k, const int* __restrict end, const signed char* __restrict vals)
 {
     const __m256i neg_one = _mm256_set1_epi8(-1);
 
@@ -51,8 +51,8 @@ const inline prop_result prop_simd(const int* k, const int* end, signed char* va
         if (cmp_mask != 0)
         {
             int i = __builtin_ctz(cmp_mask);
-            int8_t v = static_cast<int8_t>(_mm256_extract_epi8(values, i));
-            return { k + i, v };
+            signed char v = reinterpret_cast<signed char*>(&values)[i];
+            return prop_result(k + i, v);
         }
 
         k += 32;
@@ -61,16 +61,15 @@ const inline prop_result prop_simd(const int* k, const int* end, signed char* va
     // Handle remaining elements
     while (k < end)
     {
-        int8_t v = vals[*k];
-        if (v >= 0) return { k, v };
+        signed char v = vals[*k];
+        if (v >= 0) prop_result(k, v);
         ++k;
     }
 
-    return { end, -1 };
+    return prop_result(end, -1);
 }
 
-
-inline prop_result simd_simd_ver2(const int* __restrict k, const int* __restrict end, const int8_t* __restrict vals)
+inline prop_result simd_simd_ver2(const int* __restrict k, const int* __restrict end, const signed char* __restrict vals)
 {
     const __m256i neg_one = _mm256_set1_epi8(-1);
 
@@ -97,7 +96,8 @@ inline prop_result simd_simd_ver2(const int* __restrict k, const int* __restrict
         if ((mask & 0xFFFF) != 0)
         {
             int i = __builtin_ctz(mask);
-            return { k + i, static_cast<int8_t>(_mm256_extract_epi8(values, i)) };
+            signed char v = reinterpret_cast<signed char*>(&values)[i];
+            return prop_result(k + i, v);
         }
 
         k += 16;
@@ -106,15 +106,15 @@ inline prop_result simd_simd_ver2(const int* __restrict k, const int* __restrict
     // Handle remaining elements
     while (k < end)
     {
-        int8_t v = vals[*k];
-        if (v >= 0) return { k, v };
+        signed char v = vals[*k];
+        if (v >= 0) prop_result(k, v);
         ++k;
     }
 
-    return { end, -1 };
+    return prop_result(end, -1);
 }
 
-inline prop_result prop_simd_ver3(const int* k, const int* end, const signed char* vals)
+inline prop_result prop_simd_ver3(const int* __restrict k, const int* __restrict end, const signed char* __restrict vals)
 {
     const __m256i neg_one = _mm256_set1_epi8(-1);
     const int JUNK_VALS_MASK = 0x11111111;
@@ -137,8 +137,8 @@ inline prop_result prop_simd_ver3(const int* k, const int* end, const signed cha
         if (cmp_mask != 0)
         {
             int i = __builtin_ctz(cmp_mask);
-            int8_t v = static_cast<int8_t>(_mm256_extract_epi8(values, i));
-            return { k + i, v };
+            signed char v = reinterpret_cast<signed char*>(&values)[i];
+            return prop_result(k + i, v);
         }
 
         k += 8;
@@ -147,10 +147,10 @@ inline prop_result prop_simd_ver3(const int* k, const int* end, const signed cha
     // Handle remaining elements
     while (k < end)
     {
-        int8_t v = vals[*k];
-        if (v >= 0) return { k, v };
+        signed char v = vals[*k];
+        if (v >= 0) prop_result(k, v);
         ++k;
     }
 
-    return { end, -1 };
+    return prop_result(end, -1);
 }

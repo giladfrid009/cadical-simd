@@ -1,0 +1,2 @@
+build: ./configure -CXXFLAGS="-mavx2" && make
+run on all files in dir: for filename in data/test/sat/*.cnf; do ./build/cadical "$filename" -n -q ; done
