@@ -637,7 +637,6 @@ namespace CaDiCaL
                         j[-1].blit = other; // satisfied, just replace blit
                     else
                     {
-
                         // This follows Ian Gent's (JAIR'13) idea of saving the position
                         // of the last watch replacement.  In essence it needs two copies
                         // of the default search for a watch replacement (in essence the
@@ -653,7 +652,7 @@ namespace CaDiCaL
 
                         // Find replacement watch 'r' at position 'k' with value 'v'
 
-                        prop_result res = prop_simd_ver1(k, end, vals);
+                        prop_result res = prop_simd_ver3(k, end, vals);
 
                         signed char v = res.v;
                         k = res.k;
@@ -665,7 +664,7 @@ namespace CaDiCaL
                             k = lits + 2;
                             assert(w.clause->pos <= size);
 
-                            res = prop_simd_ver1(k, middle, vals);
+                            res = prop_simd_ver3(k, middle, vals);
 
                             v = res.v;
                             k = res.k;
