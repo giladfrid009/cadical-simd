@@ -1,17 +1,12 @@
 #include <immintrin.h>
 #include <cstdint>
-#include <cassert>
-#include <iostream>
-
-using std::endl;
-using std::cout;
 
 struct prop_result
 {
     int* k;
     signed char v;
 
-    prop_result(const int* k, signed char v) : k(const_cast<int*>(k)), v(v) { }
+    prop_result(int* k, signed char v) : k(k), v(v) { }
 };
 
 inline uint8_t extract_epu8var(__m256i val, int index)
@@ -25,7 +20,7 @@ inline uint8_t extract_epu8var(__m256i val, int index)
     return tmp.array[index];
 }
 
-inline prop_result prop_vanilla(const int* __restrict k, const int* __restrict end, const signed char* __restrict vals)
+inline prop_result prop_vanilla(int* k, const int* end, const signed char* vals)
 {
     signed char v = -1;
 
@@ -35,82 +30,7 @@ inline prop_result prop_vanilla(const int* __restrict k, const int* __restrict e
     return prop_result(k, v);
 }
 
-inline prop_result prop_simd_ver1(const int* __restrict k, const int* __restrict end, const signed char* __restrict vals)
-{
-    const __m256i neg_one = _mm256_set1_epi8(-1);
-
-    while (k <= end - 32)
-    {
-        // Load 32 indices (1024 bits) using four 256-bit loads
-        __m256i idx1 = _mm256_loadu_si256(reinterpret_cast<const __m256i*>(k));
-        __m256i idx2 = _mm256_loadu_si256(reinterpret_cast<const __m256i*>(k + 8));
-        __m256i idx3 = _mm256_loadu_si256(reinterpret_cast<const __m256i*>(k + 16));
-        __m256i idx4 = _mm256_loadu_si256(reinterpret_cast<const __m256i*>(k + 24));
-
-        // Check if the values are correct
-        for (int i = 0; i < 8; ++i)
-        {
-            int v = k[i];
-            int v_simd = _mm256_extract_epi32(idx1, i);
-            if (v != v_simd)
-            {
-                std::cout << "IDX Error: " << i << " " << (int)v << " " << (int)v_simd << std::endl;
-                exit(1);
-            }
-        }
-
-        // Prefetch next indices
-        //_mm_prefetch(reinterpret_cast<const char*>(k + 32), _MM_HINT_T0);
-
-        // Gather 32 (32-bit) values
-        __m256i v1 = _mm256_i32gather_epi32(reinterpret_cast<const int*>(vals), idx1, 1);
-        __m256i v2 = _mm256_i32gather_epi32(reinterpret_cast<const int*>(vals), idx2, 1);
-        __m256i v3 = _mm256_i32gather_epi32(reinterpret_cast<const int*>(vals), idx3, 1);
-        __m256i v4 = _mm256_i32gather_epi32(reinterpret_cast<const int*>(vals), idx4, 1);
-
-        // Pack 32-bit to 16-bit, then to 8-bit
-        // Note that packing is not sequential, that is problematic
-        __m256i v12 = _mm256_packs_epi32(v1, v2);
-        __m256i v34 = _mm256_packs_epi32(v3, v4);
-        __m256i values = _mm256_packs_epi16(v12, v34);
-
-        // Check if the values are correct
-
-        signed char v = vals[k[0]];
-
-        signed char v_simd = static_cast<signed char>(_mm256_extract_epi8(values, 0));
-
-        if (v != v_simd)
-        {
-            std::cout << "VAL Error:: i: " << 0 << " v: " << (int)v << " v simd: " << (int)v_simd << std::endl;
-            exit(1);
-        }
-
-        __m256i cmp_res = _mm256_cmpgt_epi8(values, neg_one);
-        uint32_t cmp_mask = _mm256_movemask_epi8(cmp_res);
-
-        if (cmp_mask != 0)
-        {
-            int i = __builtin_ctz(cmp_mask);
-            signed char v = extract_epu8var(values, i);
-            return prop_result(k + i, v);
-        }
-
-        k += 32;
-    }
-
-    // Handle remaining elements
-    while (k < end)
-    {
-        signed char v = vals[*k];
-        if (v >= 0) return prop_result(k, v);
-        ++k;
-    }
-
-    return prop_result(end, -1);
-}
-
-inline prop_result prop_simd_ver3(const int* __restrict k, const int* __restrict end, const signed char* __restrict vals)
+inline prop_result prop_simd(int* k, const int* end, const signed char* vals)
 {
     // WORKS WEW
 
@@ -120,11 +40,14 @@ inline prop_result prop_simd_ver3(const int* __restrict k, const int* __restrict
     while (k <= end - 8)
     {
         // Load 8 indices
-        __m256i indices = _mm256_loadu_si256((__m256i*)k);
+        __m256i indices = _mm256_loadu_si256(reinterpret_cast<const __m256i*>(k));
+
+        // Prefetch next indices
+        _mm_prefetch(reinterpret_cast<const char*>(k + 8), _MM_HINT_T0);
 
         // Gather 8 (32-bit) values
-        // Note that the gathered data is in the form [r---] [r---] [r---] ... where r is actual byte and - is junk data
-        __m256i values = _mm256_i32gather_epi32((const int*)vals, indices, 1);
+        // Note that the gathered data is in the form [r---] [r---] [r---] ... where r is actual byte and the rest is junk
+        __m256i values = _mm256_i32gather_epi32(reinterpret_cast<const int*>(vals), indices, 1);
 
         __m256i cmp_res = _mm256_cmpgt_epi8(values, neg_one);
         int cmp_mask = _mm256_movemask_epi8(cmp_res);
@@ -135,20 +58,19 @@ inline prop_result prop_simd_ver3(const int* __restrict k, const int* __restrict
         if (cmp_mask != 0)
         {
             int i = __builtin_ctz(cmp_mask);
+            k = k + i / 4;
             signed char v = extract_epu8var(values, i);
-            return prop_result(k + i / 4, v);
+            return prop_result(k, v);
         }
 
         k += 8;
     }
 
     // Handle remaining elements
-    while (k < end)
-    {
-        signed char v = vals[*k];
-        if (v >= 0) return prop_result(k, v);
-        ++k;
-    }
+    signed char v = -1;
 
-    return prop_result(end, -1);
+    while (k != end && (v = vals[*k]) < 0)
+        k++;
+
+    return prop_result(k, v);
 }
