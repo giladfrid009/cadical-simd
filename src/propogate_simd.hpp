@@ -1,5 +1,7 @@
 #include <immintrin.h>
-#include <cstdint>
+
+// Uncomment the following line to use AVX-512 instructions
+//#define USE_AVX512
 
 struct prop_result
 {
@@ -8,17 +10,6 @@ struct prop_result
 
     prop_result(int* k, signed char v) : k(k), v(v) { }
 };
-
-inline uint8_t extract_epu8var(__m256i val, int index)
-{
-    union
-    {
-        __m256i m256;
-        int8_t array[32];
-    } tmp;
-    tmp.m256 = val;
-    return tmp.array[index];
-}
 
 inline prop_result prop_vanilla(int* k, const int* end, const signed char* vals)
 {
@@ -30,37 +21,45 @@ inline prop_result prop_vanilla(int* k, const int* end, const signed char* vals)
     return prop_result(k, v);
 }
 
+# ifndef USE_AVX512
+
+union mm256_indexer{
+    __m256i m256;
+    signed char array[32];
+};
+
+inline signed char mm256_extract_epi8var(__m256i val, int index)
+{
+    mm256_indexer tmp;
+    tmp.m256 = val;
+    return tmp.array[index];
+}
+
 inline prop_result prop_simd(int* k, const int* end, const signed char* vals)
 {
-    // WORKS WEW
+    constexpr int SIMD_SIZE = 8;
+    constexpr int SIMD_VALS_MASK = 0x11111111;
+    const __m256i NEG_ONE = _mm256_set1_epi8(-1);
 
-    const __m256i neg_one = _mm256_set1_epi8(-1);
-    const int JUNK_VALS_MASK = 0x11111111;
-
-    while (k <= end - 8)
+    while (k <= end - SIMD_SIZE)
     {
-        // Load 8 indices
-        __m256i indices = _mm256_loadu_si256(reinterpret_cast<const __m256i*>(k));
+        // Load indices
+        __m256i indices = _mm256_loadu_si256(reinterpret_cast<const __m256i*>(k));\
 
-        // Prefetch next indices
-        _mm_prefetch(reinterpret_cast<const char*>(k + 8), _MM_HINT_T0);
-
-        // Gather 8 (32-bit) values
+        // Gather (32-bit) values
         // Note that the gathered data is in the form [r---] [r---] [r---] ... where r is actual byte and the rest is junk
         __m256i values = _mm256_i32gather_epi32(reinterpret_cast<const int*>(vals), indices, 1);
 
-        __m256i cmp_res = _mm256_cmpgt_epi8(values, neg_one);
-        int cmp_mask = _mm256_movemask_epi8(cmp_res);
+        // check for which values hold v > -1 (v >= 0 since they are int)
+        int cmp_mask = _mm256_movemask_epi8(_mm256_cmpgt_epi8(values, NEG_ONE));
 
-        // zero comparison entries that are not valid
-        cmp_mask = cmp_mask & JUNK_VALS_MASK;
+        // zero entries that are not valid (remember that we loaded also junk data)
+        cmp_mask = cmp_mask & SIMD_VALS_MASK;
 
         if (cmp_mask != 0)
         {
             int i = __builtin_ctz(cmp_mask);
-            k = k + i / 4;
-            signed char v = extract_epu8var(values, i);
-            return prop_result(k, v);
+            return prop_result(k + i / 4, mm256_extract_epi8var(values, i));
         }
 
         k += 8;
@@ -74,3 +73,58 @@ inline prop_result prop_simd(int* k, const int* end, const signed char* vals)
 
     return prop_result(k, v);
 }
+
+#else
+
+union mm512_indexer{
+    __m512i m256;
+    signed char array[64];
+};
+
+inline signed char mm512_extract_epi8var(__m512i val, unsigned int index)
+{
+    mm512_indexer tmp;
+    tmp.m256 = val;
+    return tmp.array[index];
+}
+
+inline prop_result prop_simd(int* k, const int* end, const signed char* vals)
+{
+    constexpr int SIMD_SIZE = 16;
+    constexpr unsigned long long SIMD_VALS_MASK = 0x1111111111111111ULL;
+    const __m512i NEG_ONE = _mm512_set1_epi8(-1);
+
+    while (k <= end - SIMD_SIZE)
+    {
+        // Load indices
+        __m512i indices = _mm512_loadu_si512(k);\
+
+        // Gather (32-bit) values
+        // Note that the gathered data is in the form [r---] [r---] [r---] ... where r is actual byte and the rest is junk
+        __m512i values = _mm512_i32gather_epi32(indices, vals, 1);
+
+        // check for which values hold v > -1 (v >= 0 since they are int)
+        unsigned long long cmp_mask = _mm512_cmpgt_epi8_mask(values, NEG_ONE);
+
+        // zero entries that are not valid (remember that we loaded also junk data)
+        cmp_mask = cmp_mask & SIMD_VALS_MASK;
+
+        if (cmp_mask != 0)
+        {
+            int i = __builtin_ctzll(cmp_mask);
+            return prop_result(k + i / 4, mm512_extract_epi8var(values, i));
+        }
+
+        k += 8;
+    }
+
+    // Handle remaining elements
+    signed char v = -1;
+
+    while (k != end && (v = vals[*k]) < 0)
+        k++;
+
+    return prop_result(k, v);
+}
+
+#endif
