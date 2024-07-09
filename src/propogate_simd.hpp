@@ -23,7 +23,8 @@ inline prop_result prop_vanilla(int* k, const int* end, const signed char* vals)
 
 # ifndef USE_AVX512
 
-union mm256_indexer{
+union mm256_indexer
+{
     __m256i m256;
     signed char array[32];
 };
@@ -59,7 +60,9 @@ inline prop_result prop_simd(int* k, const int* end, const signed char* vals)
         if (cmp_mask != 0)
         {
             int i = __builtin_ctz(cmp_mask);
-            return prop_result(k + i / 4, mm256_extract_epi8var(values, i));
+            int* k_new = k + i / 4;
+            return prop_result(k_new, vals[*k_new]);
+            //return prop_result(k + i / 4, mm256_extract_epi8var(values, i));
         }
 
         k += SIMD_SIZE;
@@ -76,7 +79,8 @@ inline prop_result prop_simd(int* k, const int* end, const signed char* vals)
 
 #else
 
-union mm512_indexer{
+union mm512_indexer
+{
     __m512i m256;
     signed char array[64];
 };
