@@ -1,6 +1,6 @@
 #include <immintrin.h>
 
-// Uncomment the following line to use AVX-512 instructions
+// Uncomment one of the following to enable SIMD propagation
 //#define USE_AVX512
 //#define USE_AVX256
 #define USE_AVX128
