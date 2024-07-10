@@ -29,7 +29,7 @@ inline prop_result prop_simd(int* k, const int* end, const signed char* vals)
 
 #elif defined(USE_AVX128)
 
-// TODO: FINISH IMPLEMENTING
+// SSE2 INTRINSICS
 inline prop_result prop_simd(int* k, const int* end, const signed char* vals)
 {
     constexpr int SIMD_SIZE = 4;
@@ -39,14 +39,14 @@ inline prop_result prop_simd(int* k, const int* end, const signed char* vals)
     while (k <= end - SIMD_SIZE)
     {
         // Load indices
-        __m256i indices = _mm256_loadu_si256(reinterpret_cast<const __m256i*>(k));
+        __m128i  indices = _mm_loadu_si128(reinterpret_cast<const __m128i*>(k));
 
         // Gather (32-bit) values
         // Note that the gathered data is in the form [r---] [r---] [r---] ... where r is actual byte and the rest is junk
-        __m256i values = _mm256_i32gather_epi32(reinterpret_cast<const int*>(vals), indices, 1);
+        __m128i values = _mm_i32gather_epi32(reinterpret_cast<const int*>(vals), indices, 1);
 
         // check for which values hold v > -1 (v >= 0 since they are int)
-        __mmask32 cmp_mask = _mm256_movemask_epi8(_mm256_cmpgt_epi8(values, NEG_ONE));
+        int cmp_mask = _mm_movemask_epi8(_mm_cmpgt_epi8(values, NEG_ONE));
 
         // zero entries that are not valid (remember that we loaded also junk data)
         cmp_mask = cmp_mask & SIMD_VALS_MASK;
@@ -74,6 +74,7 @@ inline prop_result prop_simd(int* k, const int* end, const signed char* vals)
 
 // TODO: COUNT STATISTICS HOW MANY OF THE CALLS TO PROP_SIMD END UP IN THE SIMD LOOP
 // TODO: COUNT STATISTICS OF HOW MANY ITERS THE SIMD LOOP PERFORMS 
+// AVX2 INTRINSICS
 inline prop_result prop_simd(int* k, const int* end, const signed char* vals)
 {
     constexpr int SIMD_SIZE = 8;
@@ -116,6 +117,7 @@ inline prop_result prop_simd(int* k, const int* end, const signed char* vals)
 
 #elif defined(USE_AVX512)
 
+// AVX-512 INTRINSICS
 inline prop_result prop_simd(int* k, const int* end, const signed char* vals)
 {
     constexpr int SIMD_SIZE = 16;
