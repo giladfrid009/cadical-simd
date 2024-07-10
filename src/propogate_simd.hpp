@@ -46,7 +46,7 @@ inline prop_result prop_simd(int* k, const int* end, const signed char* vals)
         __m128i values = _mm_i32gather_epi32(reinterpret_cast<const int*>(vals), indices, 1);
 
         // check for which values hold v > -1 (v >= 0 since they are int)
-        int cmp_mask = _mm_movemask_epi8(_mm_cmpgt_epi8(values, NEG_ONE));
+        __mmask16 cmp_mask = _mm_movemask_epi8(_mm_cmpgt_epi8(values, NEG_ONE));
 
         // zero entries that are not valid (remember that we loaded also junk data)
         cmp_mask = cmp_mask & SIMD_VALS_MASK;
