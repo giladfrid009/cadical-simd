@@ -3,15 +3,16 @@
 
 namespace CaDiCaL
 {
+
     // Uncomment one of the following to enable SIMD propagation
-//#define USE_AVX512
-//#define USE_AVX256
-#define USE_AVX128
+    //#define USE_AVX512
+    //#define USE_AVX256
+    //#define USE_AVX128
 
 # if not defined(USE_AVX256) && not defined(USE_AVX512) && not defined(USE_AVX128)
 
-// TODO: COUNT STATISTIC OF THE LOCATION OF THE NNF LITERAL
-// TODO: TRY CORRELATE THE LOCATION OF THE NNF LIT WITH THE FORMULA STRUCTURE SOMEHOW.
+    // TODO: COUNT STATISTIC OF THE LOCATION OF THE NNF LITERAL
+    // TODO: TRY CORRELATE THE LOCATION OF THE NNF LIT WITH THE FORMULA STRUCTURE SOMEHOW.
     prop_result Internal::prop_simd(int* k, const int* end, const signed char* vals)
     {
         signed char v = -1;
@@ -26,7 +27,7 @@ namespace CaDiCaL
 
 #elif defined(USE_AVX512)
 
-// AVX-512 INTRINSICS
+        // AVX-512 INTRINSICS
     prop_result Internal::prop_simd(int* k, const int* end, const signed char* vals)
     {
         constexpr int SIMD_SIZE = 16;
@@ -69,9 +70,9 @@ namespace CaDiCaL
 
 # elif defined(USE_AVX256)
 
-// TODO: COUNT STATISTICS HOW MANY OF THE CALLS TO PROP_SIMD END UP IN THE SIMD LOOP
-// TODO: COUNT STATISTICS OF HOW MANY ITERS THE SIMD LOOP PERFORMS 
-// AVX2 INTRINSICS
+        // TODO: COUNT STATISTICS HOW MANY OF THE CALLS TO PROP_SIMD END UP IN THE SIMD LOOP
+        // TODO: COUNT STATISTICS OF HOW MANY ITERS THE SIMD LOOP PERFORMS 
+        // AVX2 INTRINSICS
     prop_result Internal::prop_simd(int* k, const int* end, const signed char* vals)
     {
         constexpr int SIMD_SIZE = 8;
@@ -114,7 +115,7 @@ namespace CaDiCaL
 
 #elif defined(USE_AVX128)
 
-// SSE2 INTRINSICS
+        // SSE2 INTRINSICS
     prop_result Internal::prop_simd(int* k, const int* end, const signed char* vals)
     {
         constexpr int SIMD_SIZE = 4;
