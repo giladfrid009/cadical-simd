@@ -1,5 +1,4 @@
 #include "internal.hpp"
-#include "propogate_simd.hpp"
 
 #define TESTING
 

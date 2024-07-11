@@ -987,4 +987,6 @@ bool Internal::traverse_clauses (ClauseIterator &it) {
   return true;
 }
 
+/*------------------------------------------------------------------------*/
+
 } // namespace CaDiCaL
