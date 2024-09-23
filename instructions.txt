@@ -11,4 +11,7 @@ build:
         ./configure --competition CXXFLAGS="-march=native -mtune=native" && make
 
 run qsub:
-    for filename in sat2017_v2/*.cnf; do qsub -v arg='"$filename" -n -t 10',out='res_"$filename".txt' -o out_"$filename".txt -e err_"$filename".txt cadical.sh ; done
+    ./run_cadical.sh <path_to_failed_files.txt>
+
+kill all user jobs:
+    qselect -u fre.gilad | xargs qdel
