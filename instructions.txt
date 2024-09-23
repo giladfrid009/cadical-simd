@@ -1,2 +1,14 @@
-build: ./configure -CXXFLAGS="-mavx2" && make
-run on all files in dir: for filename in data/test/sat/*.cnf; do ./build/cadical "$filename" -n -q ; done
+build: 
+    VANILLA:
+        ./configure --competition && make
+    AVX128:
+        ./configure --competition CXXFLAGS="-mavx" && make
+    AVX256: 
+        ./configure --competition CXXFLAGS="-mavx2" && make
+    AVX512: 
+        ./configure --competition CXXFLAGS="-mavx512f" && make
+    LOCAL MACHINE SUPPORT:
+        ./configure --competition CXXFLAGS="-march=native -mtune=native" && make
+
+run qsub:
+    for filename in sat2017_v2/*.cnf; do qsub -v arg='"$filename" -n -t 10',out='res_"$filename".txt' -o out_"$filename".txt -e err_"$filename".txt cadical.sh ; done

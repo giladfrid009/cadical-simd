@@ -31,6 +31,6 @@ cd $PBS_O_WORKDIR
 #Run command
 #-----------------------
 ## if we add pipe to grep "###" it doesn't work on timeouts. 
-./build/cadical $arg > $out
+time ./build/cadical $arg > $out
 
 

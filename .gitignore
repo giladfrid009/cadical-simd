@@ -1,6 +1,5 @@
 build
 makefile
 data
-out.txt
-out2.txt
-sat2023
+runs
+sat2017*
