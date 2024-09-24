@@ -6,7 +6,7 @@ namespace CaDiCaL
 
     // Uncomment one of the following to enable SIMD propagation
     //#define USE_AVX512
-    //#define USE_AVX256
+    #define USE_AVX256
     //#define USE_AVX128
 
 # if not defined(USE_AVX256) && not defined(USE_AVX512) && not defined(USE_AVX128)
