@@ -4,7 +4,7 @@
 namespace CaDiCaL
 {
     // Uncomment one of the following to enable SIMD propagation
-    //#define UNROLL
+    #define UNROLL
     //#define USE_AVX512
     #define USE_AVX256
     //#define USE_AVX128
