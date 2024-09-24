@@ -3,8 +3,8 @@
 
 namespace CaDiCaL
 {
-
     // Uncomment one of the following to enable SIMD propagation
+    //#define UNROLL
     //#define USE_AVX512
     #define USE_AVX256
     //#define USE_AVX128
@@ -68,7 +68,7 @@ namespace CaDiCaL
         return prop_result(k, v);
     }
 
-# elif defined(USE_AVX256)
+# elif defined(USE_AVX256) && not defined(UNROLL)
 
         // TODO: COUNT STATISTICS HOW MANY OF THE CALLS TO PROP_SIMD END UP IN THE SIMD LOOP
         // TODO: COUNT STATISTICS OF HOW MANY ITERS THE SIMD LOOP PERFORMS 
@@ -111,6 +111,47 @@ namespace CaDiCaL
             k++;
 
         return prop_result(k, v);
+    }
+
+# elif defined(USE_AVX256) && defined(UNROLL)
+
+    // TODO: COUNT STATISTICS HOW MANY OF THE CALLS TO PROP_SIMD END UP IN THE SIMD LOOP
+    // TODO: COUNT STATISTICS OF HOW MANY ITERS THE SIMD LOOP PERFORMS 
+    // AVX2 INTRINSICS
+    prop_result Internal::prop_simd(int* k, const int* end, const signed char* vals)
+    {
+        while (k + 7 < end)
+        {
+            signed char v0 = vals[k[0]];
+            signed char v1 = vals[k[1]];
+            signed char v2 = vals[k[2]];
+            signed char v3 = vals[k[3]];
+            signed char v4 = vals[k[4]];
+            signed char v5 = vals[k[5]];
+            signed char v6 = vals[k[6]];
+            signed char v7 = vals[k[7]];
+
+            if (v0 >= 0) return prop_result(k + 0, v0);
+            if (v1 >= 0) return prop_result(k + 1, v1);
+            if (v2 >= 0) return prop_result(k + 2, v2);
+            if (v3 >= 0) return prop_result(k + 3, v3);
+            if (v4 >= 0) return prop_result(k + 4, v4);
+            if (v5 >= 0) return prop_result(k + 5, v5);
+            if (v6 >= 0) return prop_result(k + 6, v6);
+            if (v7 >= 0) return prop_result(k + 7, v7);
+
+            k += 8;
+        }
+
+        while (k != end)
+        {
+            signed char v = vals[*k];
+            if (v >= 0)
+                return prop_result(k, v);
+            k++;
+        }
+
+        return prop_result(k, -1);
     }
 
 #elif defined(USE_AVX128)
