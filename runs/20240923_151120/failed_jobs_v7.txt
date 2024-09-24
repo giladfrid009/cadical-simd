@@ -1,0 +1,11 @@
+sat2017/mp1-squ_ali_s10x10_c39_sinz_SAT.cnf
+sat2017/mp1-squ_any_s09x07_c27_abio_UNS.cnf
+sat2017/mp1-squ_any_s09x07_c27_abix_UNS.cnf
+sat2017/mp1-squ_any_s09x07_c27_bail_UNS.cnf
+sat2017/mp1-squ_any_s09x07_c27_sinx_UNS.cnf
+sat2017/mp1-squ_any_s09x07_c27_sinz_UNS.cnf
+sat2017/mp1-tri_ali_s11_c35_abio_UNS.cnf
+sat2017/mp1-tri_ali_s11_c35_abix_UNS.cnf
+sat2017/mp1-tri_ali_s11_c35_bail_UNS.cnf
+sat2017/mp1-tri_ali_s11_c35_sinx_UNS.cnf
+sat2017/mp1-tri_ali_s11_c35_sinz_UNS.cnf

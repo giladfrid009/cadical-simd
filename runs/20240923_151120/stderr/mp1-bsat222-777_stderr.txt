@@ -1,0 +1,5 @@
+cadical: error: sat2017/mp1-bsat222-777.cnf:4: parse error: expected 'c' or 'p'
+
+real	0m0.005s
+user	0m0.000s
+sys	0m0.002s
