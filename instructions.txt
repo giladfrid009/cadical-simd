@@ -2,7 +2,7 @@ build:
     VANILLA:
         ./configure --competition && make
     AVX128:
-        ./configure --competition CXXFLAGS="-mavx" && make
+        ./configure --competition CXXFLAGS="-msse4.2 -mavx2" && make
     AVX256: 
         ./configure --competition CXXFLAGS="-mavx2" && make
     AVX512: 
@@ -10,7 +10,7 @@ build:
     LOCAL MACHINE SUPPORT:
         ./configure --competition CXXFLAGS="-march=native -mtune=native" && make
 
-run qsub:
+run benchmarks:
     ./run_cadical.sh <path_to_failed_files.txt>
 
 kill all user jobs:
