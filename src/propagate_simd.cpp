@@ -1,15 +1,19 @@
 #include "internal.hpp"
 #include <immintrin.h>
+#include <cstdint> // For uint8_t, uint32_t
 
 namespace CaDiCaL
 {
-    // Uncomment one of the following to enable SIMD propagation
-    #define UNROLL
-    #define USE_AVX512
-    //#define USE_AVX256
-    //#define USE_AVX128
+// Uncomment one of the following to enable SIMD propagation
 
-# if not defined(USE_AVX256) && not defined(USE_AVX512) && not defined(USE_AVX128)
+//#define UNROLL
+#define UNROLL2
+
+//#define USE_AVX512
+//#define USE_AVX256
+//#define USE_AVX128
+
+# if not defined(USE_AVX256) && not defined(USE_AVX512) && not defined(USE_AVX128) && not defined(UNROLL) && not defined(UNROLL2)
 
     // TODO: COUNT STATISTIC OF THE LOCATION OF THE NNF LITERAL
     // TODO: TRY CORRELATE THE LOCATION OF THE NNF LIT WITH THE FORMULA STRUCTURE SOMEHOW.
@@ -68,7 +72,7 @@ namespace CaDiCaL
         return prop_result(k, v);
     }
 
-# elif defined(USE_AVX256) && not defined(UNROLL)
+# elif defined(USE_AVX256)
 
         // TODO: COUNT STATISTICS HOW MANY OF THE CALLS TO PROP_SIMD END UP IN THE SIMD LOOP
         // TODO: COUNT STATISTICS OF HOW MANY ITERS THE SIMD LOOP PERFORMS 
@@ -113,7 +117,7 @@ namespace CaDiCaL
         return prop_result(k, v);
     }
 
-# elif defined(USE_AVX256) && defined(UNROLL)
+# elif defined(UNROLL)
 
     // TODO: COUNT STATISTICS HOW MANY OF THE CALLS TO PROP_SIMD END UP IN THE SIMD LOOP
     // TODO: COUNT STATISTICS OF HOW MANY ITERS THE SIMD LOOP PERFORMS 
@@ -149,6 +153,62 @@ namespace CaDiCaL
             if (v >= 0)
                 return prop_result(k, v);
             k++;
+        }
+
+        return prop_result(k, -1);
+    }
+
+# elif defined(UNROLL2)
+
+    // eliminate branches as much as possible
+    prop_result Internal::prop_simd(int* k, const int* end, const signed char* vals)
+    {
+        while (k + 7 < end)
+        {
+            // Load 8 values from vals using indices from k
+            signed char v0 = vals[k[0]];
+            signed char v1 = vals[k[1]];
+            signed char v2 = vals[k[2]];
+            signed char v3 = vals[k[3]];
+            signed char v4 = vals[k[4]];
+            signed char v5 = vals[k[5]];
+            signed char v6 = vals[k[6]];
+            signed char v7 = vals[k[7]];
+
+            // Compute is_non_negative bits: 1 if v >= 0, 0 if v < 0
+            uint8_t m0 = (uint8_t)(v0 >= 0);
+            uint8_t m1 = (uint8_t)(v1 >= 0);
+            uint8_t m2 = (uint8_t)(v2 >= 0);
+            uint8_t m3 = (uint8_t)(v3 >= 0);
+            uint8_t m4 = (uint8_t)(v4 >= 0);
+            uint8_t m5 = (uint8_t)(v5 >= 0);
+            uint8_t m6 = (uint8_t)(v6 >= 0);
+            uint8_t m7 = (uint8_t)(v7 >= 0);
+
+            // Pack the bits into a single mask
+            uint32_t mask = (m0 << 0) | (m1 << 1) | (m2 << 2) | (m3 << 3)
+                | (m4 << 4) | (m5 << 5) | (m6 << 6) | (m7 << 7);
+
+            if (mask)
+            {
+                // Find the index of the first non-negative value
+                int index = __builtin_ctz(mask); // Count trailing zeros
+
+                // Use array indexing to get the corresponding vN
+                signed char v_arr[8] = { v0, v1, v2, v3, v4, v5, v6, v7 };
+                return prop_result(k + index, v_arr[index]);
+            }
+
+            k += 8;
+        }
+
+        // Process any remaining elements individually
+        while (k != end)
+        {
+            signed char v = vals[*k];
+            if (v >= 0)
+                return prop_result(k, v);
+            ++k;
         }
 
         return prop_result(k, -1);
